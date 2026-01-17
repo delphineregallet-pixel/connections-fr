@@ -1,9 +1,22 @@
 const $ = id => document.getElementById(id);
-const KEY = "connections-fr-state-v2";
 
 function today() {
-  const d = new Date();
-  return d.toISOString().slice(0,10);
+  return new Date().toISOString().slice(0,10);
+}
+
+function params() {
+  const p = new URLSearchParams(location.search);
+  return {
+    d: p.get("d") || today(),
+    n: parseInt(p.get("n") || "1", 10)
+  };
+}
+
+function setParams(d,n) {
+  const p = new URLSearchParams();
+  p.set("d", d);
+  p.set("n", n);
+  history.replaceState(null,"",`?${p.toString()}`);
 }
 
 function shuffle(a) {
@@ -15,163 +28,146 @@ function shuffle(a) {
   return b;
 }
 
-function load() {
-  try { return JSON.parse(localStorage.getItem(KEY)); }
-  catch { return null; }
-}
+function key(id) { return "connections:"+id; }
 
-function save(s) {
-  localStorage.setItem(KEY, JSON.stringify(s));
-}
+function load(k){ try{return JSON.parse(localStorage.getItem(k));}catch{return null;} }
+function save(k,s){ localStorage.setItem(k,JSON.stringify(s)); }
 
-function getPuzzle(date, puzzleNumber) {
-  // puzzles.js expose getPuzzleFor(date, n)
-  return window.getPuzzleFor(date, puzzleNumber);
-}
-
-function bestOverlapMessage(puzzle, selection, foundGroups) {
-  const sel = new Set(selection);
-  const alreadyFound = new Set(foundGroups.flatMap(g => g.words));
+function overlapMsg(puzzle, sel, found) {
+  const s = new Set(sel);
+  const used = new Set(found.flatMap(g=>g.words));
   let best = 0;
 
-  for (const g of puzzle.groups) {
-    // ignore groups already found
-    if (g.words.every(w => alreadyFound.has(w))) continue;
+  puzzle.groups.forEach(g=>{
+    if (g.words.every(w=>used.has(w))) return;
+    let c = 0;
+    g.words.forEach(w=>{ if(s.has(w)) c++; });
+    best = Math.max(best,c);
+  });
 
-    let k = 0;
-    for (const w of g.words) if (sel.has(w)) k++;
-    if (k > best) best = k;
-  }
+  return best===3
+    ? "👀 Presque ! Tu as 3 mots en commun (3/4)."
+    : "❌ Mauvaise combinaison";
+}
 
-  if (best === 3) return "👀 Presque ! Tu as 3 mots en commun (3/4).";
-  if (best === 2) return "Pas loin… mais pas encore.";
-  return "❌ Mauvaise combinaison";
+function revealAll(state) {
+  const done = new Set(state.found.map(g=>g.label));
+  state.puzzle.groups.forEach(g=>{
+    if(!done.has(g.label)) state.found.push(g);
+  });
 }
 
 function init() {
-  let state = load();
+  const {d,n} = params();
+  setParams(d,n);
 
-  // state.puzzleNumber: permet plusieurs puzzles par jour
-  if (!state || state.date !== today()) {
-    state = { date: today(), puzzleNumber: 1 };
-  }
+  const puzzle = window.getPuzzleFor(new Date(d), n);
+  const k = key(puzzle.id);
 
-  // construit / recharge le puzzle courant
-  const puzzle = getPuzzle(new Date(), state.puzzleNumber);
-
-  // si on change de puzzleNumber, on repart propre
-  if (!state.puzzle || state.puzzle.id !== puzzle.id) {
+  let state = load(k);
+  if(!state){
     state = {
-      date: today(),
-      puzzleNumber: state.puzzleNumber || 1,
-      puzzle,
-      words: shuffle(puzzle.groups.flatMap(g => g.words)),
-      selected: [],
-      found: [],
-      mistakes: 0,
-      done: false,
-      msg: ""
+      puzzle, d, n,
+      words: shuffle(puzzle.groups.flatMap(g=>g.words)),
+      selected:[], found:[],
+      mistakes:0, done:false, msg:""
     };
-    save(state);
+    save(k,state);
   }
 
-  function render() {
-    $("dateLabel").textContent = `${state.date} · Puzzle #${state.puzzleNumber}`;
+  function render(){
+    $("dateLabel").textContent = `${d} · Puzzle #${n}`;
     $("mistakes").textContent = state.mistakes;
     $("found").textContent = state.found.length;
     $("msg").textContent = state.msg;
 
-    const fg = $("foundGroups");
-    fg.innerHTML = "";
-    state.found.forEach(g => {
-      fg.innerHTML += `
+    $("foundGroups").innerHTML =
+      state.found.map(g=>`
         <div class="groupCard">
           <div class="groupTitle">${g.label}</div>
           <div class="groupWords">${g.words.join(" · ")}</div>
-        </div>`;
-    });
+        </div>`).join("");
 
-    const used = new Set(state.found.flatMap(g => g.words));
-    const grid = $("grid");
-    grid.innerHTML = "";
+    const used = new Set(state.found.flatMap(g=>g.words));
+    $("grid").innerHTML = "";
 
-    state.words.filter(w => !used.has(w)).forEach(w => {
-      const d = document.createElement("div");
-      d.className = "tile" + (state.selected.includes(w) ? " sel" : "");
-      d.textContent = w;
-      d.onclick = () => {
-        if (state.done) return;
+    state.words.filter(w=>!used.has(w)).forEach(w=>{
+      const t = document.createElement("div");
+      t.className = "tile"+(state.selected.includes(w)?" sel":"");
+      t.textContent = w;
+      t.onclick = ()=>{
+        if(state.done) return;
         const i = state.selected.indexOf(w);
-        if (i >= 0) state.selected.splice(i,1);
-        else if (state.selected.length < 4) state.selected.push(w);
-        state.msg = "";
-        save(state); render();
+        i>=0 ? state.selected.splice(i,1) :
+          state.selected.length<4 && state.selected.push(w);
+        state.msg="";
+        save(k,state); render();
       };
-      grid.appendChild(d);
+      $("grid").appendChild(t);
     });
 
-    $("submitBtn").disabled = state.selected.length !== 4 || state.done;
+    $("submitBtn").disabled = state.selected.length!==4 || state.done;
   }
 
-  $("submitBtn").onclick = () => {
-    if (state.done) return;
+  $("submitBtn").onclick = ()=>{
+    if(state.done) return;
 
-    const selKey = state.selected.slice().sort().join("|");
-    const match = state.puzzle.groups.find(
-      g => g.words.slice().sort().join("|") === selKey
+    const s = state.selected.slice().sort().join("|");
+    const m = state.puzzle.groups.find(
+      g=>g.words.slice().sort().join("|")===s
     );
 
-    if (match) {
-      // évite doublons
-      if (!state.found.some(g => g.label === match.label)) state.found.push(match);
-      state.msg = "✅ Groupe trouvé";
-      state.selected = [];
-
-      if (state.found.length === 4) {
-        state.done = true;
-        state.msg = "🎉 Bravo ! Puzzle terminé.";
+    if(m){
+      state.found.push(m);
+      state.msg="✅ Groupe trouvé";
+      state.selected=[];
+      if(state.found.length===4){
+        state.done=true;
+        state.msg="🎉 Bravo !";
       }
     } else {
       state.mistakes++;
-      state.msg = bestOverlapMessage(state.puzzle, state.selected, state.found);
-      state.selected = [];
-
-      if (state.mistakes >= 4) {
-        state.done = true;
-        state.msg = "⛔ 4 erreurs. Puzzle terminé.";
+      state.msg = overlapMsg(state.puzzle,state.selected,state.found);
+      state.selected=[];
+      if(state.mistakes>=4){
+        state.done=true;
+        revealAll(state);
+        state.msg="⛔ 4 erreurs. Voici les solutions.";
       }
     }
-
-    save(state); render();
+    save(k,state); render();
   };
 
-  $("shuffleBtn").onclick = () => {
+  $("shuffleBtn").onclick=()=>{
+    if(state.done) return;
     state.words = shuffle(state.words);
-    save(state); render();
+    save(k,state); render();
   };
 
-  $("deselectBtn").onclick = () => {
-    state.selected = [];
-    state.msg = "";
-    save(state); render();
+  $("deselectBtn").onclick=()=>{
+    state.selected=[]; state.msg="";
+    save(k,state); render();
   };
 
-  $("resetBtn").onclick = () => {
-    localStorage.removeItem(KEY);
+  $("resetBtn").onclick=()=>{
+    localStorage.removeItem(k);
     location.reload();
   };
 
-  $("newPuzzleBtn").onclick = () => {
-    // puzzle suivant, même jour
-    const next = (state.puzzleNumber || 1) + 1;
-    const base = { date: today(), puzzleNumber: next };
-    localStorage.setItem(KEY, JSON.stringify(base));
+  $("newPuzzleBtn").onclick=()=>{
+    setParams(d,n+1);
     location.reload();
   };
 
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js").catch(()=>{});
-  }
+  $("shareBtn").onclick=async ()=>{
+    const url = location.href;
+    if(navigator.share){
+      await navigator.share({title:"Connections FR",url});
+    } else {
+      navigator.clipboard.writeText(url);
+      state.msg="Lien copié";
+    }
+  };
 
   render();
 }
