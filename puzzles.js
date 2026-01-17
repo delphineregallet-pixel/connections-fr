@@ -1,89 +1,97 @@
-/* puzzles.js — Connections FR (365 jours)
-   Génération automatique d’un puzzle par jour
-   Stable, offline, sans serveur
-*/
-
 (function () {
-
+  // Catégories plus piégeuses (mots “à double lecture”, objets/fonctions, préfixes, etc.)
+  // On garde 4 groupes de 4, avec un peu de “faux amis” sans empêcher la solution unique.
   const BANK = [
-    { label: "Oiseaux", words: ["MERLE","MOINEAU","HIRONDELLE","PIGEON","CORBEAU","MOUETTE","CANARD","PIE","HIBOU","AIGLE"] },
-    { label: "Fruits", words: ["POMME","POIRE","BANANE","CERISE","RAISIN","ABRICOT","FIGUE","MANGUE","ORANGE","CITRON"] },
-    { label: "Légumes", words: ["CAROTTE","TOMATE","COURGETTE","AUBERGINE","POIVRON","CONCOMBRE","BROCOLI","CHOU","RADIS","ÉPINARD"] },
-    { label: "Poissons", words: ["SAUMON","THON","SARDINE","TRUITE","CARPE","CABILLAUD","MAQUEREAU","BAR","SOLE","RAIE"] },
-    { label: "Couleurs", words: ["BLEU","VERT","ROUGE","JAUNE","ROSE","ORANGE","VIOLET","GRIS","NOIR","BLANC"] },
-    { label: "Temps", words: ["PLUIE","VENT","ORAGE","BROUILLARD","NEIGE","GRÊLE","CANICULE","GEL","BRISE","AVERSÉE"] },
-    { label: "Informatique", words: ["CLAVIER","SOURIS","ÉCRAN","DOSSIER","FICHIER","ONGLET","NAVIGATEUR","RÉSEAU","SERVEUR","CAPTEUR"] },
-    { label: "Cuisine", words: ["FOURCHETTE","CUILLÈRE","COUTEAU","ASSIETTE","VERRE","BOL","POÊLE","NAPPE","SPATULE","LOUCHE"] },
-    { label: "Pâtisserie", words: ["FARINE","SUCRE","BEURRE","ŒUF","LEVURE","VANILLE","CHOCOLAT","CRÈME","GLAÇAGE","PÂTE"] },
-    { label: "Boissons", words: ["CAFÉ","THÉ","JUS","EAU","SODA","SIROP","INFUSION","SMOOTHIE","LAIT","LIMONADE"] },
-    { label: "Musique", words: ["PIANO","GUITARE","VIOLON","BATTERIE","FLÛTE","SAXOPHONE","TROMPETTE","BASSE","MICRO","AMPLI"] },
-    { label: "Cinéma", words: ["SALLE","PROJECTEUR","GÉNÉRIQUE","RÉALISATEUR","ACTEUR","SCÉNARIO","CASTING","AFFICHE","PLAN","MONTAGE"] },
-    { label: "Lecture", words: ["ROMAN","CHAPITRE","PAGE","COUVERTURE","AUTEUR","INTRIGUE","PERSONNAGE","BIBLIOTHÈQUE","PROLOGUE","ÉDITION"] },
-    { label: "École", words: ["CAHIER","STYLO","CRAYON","GOMME","RÈGLE","TROUSSE","TABLEAU","DICTÉE","LEÇON","EXAMEN"] },
-    { label: "Maison", words: ["SALON","CUISINE","CHAMBRE","COULOIR","GARAGE","JARDIN","CAVE","BALCON","TOIT","ESCALIER"] },
-    { label: "Vêtements", words: ["CHEMISE","PANTALON","JUPE","ROBE","MANTEAU","VESTE","PULL","ÉCHARPE","CHAUSSETTE","CEINTURE"] },
-    { label: "Chaussures", words: ["BASKETS","BOTTINES","ESCARPINS","MOCASSINS","SANDALES","BALLERINES","DERBIES","RANGERS","CHAUSSONS","ESPADRILLES"] },
-    { label: "Bijoux", words: ["BAGUE","BRACELET","COLLIER","CHAÎNE","BROCHE","JONC","ALLIANCE","PENDENTIF","PERLE","DIAMANT"] },
-    { label: "Sports", words: ["FOOT","TENNIS","RUGBY","NATATION","COURSE","SKI","JUDO","BOXE","VÉLO","BASKET"] },
-    { label: "Transports", words: ["MÉTRO","BUS","TRAM","TRAIN","AVION","TAXI","VÉLO","BATEAU","VOITURE","MOTO"] },
-    { label: "Ville", words: ["RUE","PLACE","FEU","TROTTOIR","MAIRIE","MUSÉE","CAFÉ","PARC","PONT","BOULEVARD"] },
-    { label: "Voyage", words: ["VALISE","PASSEPORT","BILLET","HÔTEL","CARTE","GUIDE","DOUANE","EXCURSION","SOUVENIR","RÉSERVATION"] },
-    { label: "Émotions", words: ["JOIE","TRISTESSE","COLÈRE","PEUR","SURPRISE","HONT E".replace(" ",""),"FIERTÉ","NOSTALGIE","ESPOIR","ENVIE"] },
-    { label: "Corps", words: ["TÊTE","COU","ÉPAULE","BRAS","MAIN","DOIGT","JAMBE","PIED","DOS","GENOU"] },
-    { label: "Animaux", words: ["CHIEN","CHAT","CHEVAL","VACHE","MOUTON","LAPIN","RENARD","OURS","LOUP","DAUPHIN"] },
-    { label: "Insectes", words: ["ABEILLE","GUÊPE","MOUCHE","MOUSTIQUE","FOURMI","PAPILLON","COCCINELLE","LIBELLULE","PUCE","SCARABÉE"] },
-    { label: "Arbres", words: ["CHÊNE","PIN","SAPIN","BOULEAU","OLIVIER","PLATANE","SAULE","PEUPLIER","CYPRÈS","NOISETIER"] },
-    { label: "Fleurs", words: ["ROSE","TULIPE","LILAS","IRIS","PIVOINE","MUGUET","JASMIN","ORCHIDÉE","MARGUERITE","LAVANDE"] },
-    { label: "Jeux", words: ["ÉCHECS","DAMES","CARTES","DÉS","PUZZLE","DOMINOS","UNO","SCRABBLE","MONOPOLY","MORPION"] },
-    { label: "Internet", words: ["EMAIL","LIEN","PUB","COOKIE","POST","COMMENTAIRE","ABONNÉ","HASHTAG","STREAM","CLOUD"] }
+    { label: "Peut être 'chargé'", words: ["TÉLÉPHONE","CAMION","DOSSIER","ARME","ACCUSATION","BAGAGE","BATTERIE","CARTE","COMPTE","HISTOIRE"] },
+    { label: "En ligne", words: ["BANQUE","TRAIN","ARTICLE","JEU","FACTURE","BILLET","RECETTE","COURS","SÉRIE","COMMANDE"] },
+    { label: "Fait un 'clic'", words: ["SOURIS","APPAREIL PHOTO","STYLO","PIÈGE","CLAPET","BOUTON","SÉCURITÉ","COMPTEUR","TÉLÉCOMMANDE","STAPLER"] },
+    { label: "Peut être 'à plat'", words: ["PNEU","BATTERIE","MER","SODA","TARTE","VOIX","LUMIÈRE","VENT","CHAMPAGNE","DOS"] },
+
+    { label: "Préfixes courants", words: ["TÉLÉ","AUTO","MICRO","PHOTO","BIO","HYPER","SUPER","MÉGA","MULTI","INTER"] },
+    { label: "Suffixes courants", words: ["-LOGIE","-PHOBIE","-PHILE","-SCOPE","-MÈTRE","-GÈNE","-GONE","-CIDE","-CRATE","-THÈQUE"] },
+
+    { label: "Synonymes de 'rapide'", words: ["VIF","PROMPT","EXPRESS","FLASH","FUSÉE","ÉCLAIR","PRESSÉ","HÂTIF","AGILE","NERVEUX"] },
+    { label: "Synonymes de 'calme'", words: ["ZEN","POSÉ","SEREIN","DOUX","TRANQUILLE","PAISIBLE","ASSAGI","LENT","CALME","MUET"] },
+
+    { label: "Peut être 'clé'", words: ["SOLUTION","SERRURE","MUSIQUE","RÉPONSE","CARTE","CODE","INDICE","PORTAIL","ACCÈS","SECRET"] },
+    { label: "Peut être 'banc'", words: ["POISSON","MEUBLE","ÉCOLE","SABLE","BRUME","BANQUE","FLEUVE","PARC","TRIBUNE","ÉGLISE"] },
+
+    { label: "Autour d'un procès", words: ["JUGE","AVOCAT","TÉMOIN","VERDICT","DOSSIER","APPEL","LOI","JURY","PLAIDOIRIE","TRIBUNAL"] },
+    { label: "Au restaurant", words: ["MENU","ADDITION","SERVIETTE","VERRE","ASSIETTE","CUILLÈRE","FOURCHETTE","NAPPE","POURBOIRE","RÉSERVATION"] },
+
+    { label: "Peut être 'source'", words: ["RIVIÈRE","ARTICLE","INFO","BUG","ÉNERGIE","ORIGINE","CITATION","DONNÉE","PHOTO","RÉFÉRENCE"] },
+    { label: "Peut être 'plan'", words: ["CARTE","STRATÉGIE","DESSIN","PROJET","ÉTAGE","CINÉMA","SCHÉMA","PLANNING","PROGRAMME","FEUILLE"] },
+
+    { label: "Se ferme", words: ["PORTE","ZIP","SESSION","ONGLET","DÉBAT","BOUTEILLE","Dossier".toUpperCase(),"COMPTE","VALISE","RIDEAU"] },
+    { label: "Se 'lance'", words: ["DÉFI","PROJET","FUSÉE","APPLICATION","SÉRIE","CAMPAGNE","MOTEUR","TENDANCE","RUMEUR","PROCÉDURE"] }
   ];
 
-  function rng(seed) {
-    let x = seed;
-    return () => {
-      x ^= x << 13;
-      x ^= x >> 17;
-      x ^= x << 5;
+  function rng32(seed) {
+    let x = seed | 0;
+    return function () {
+      x ^= x << 13; x |= 0;
+      x ^= x >>> 17; x |= 0;
+      x ^= x << 5; x |= 0;
       return (x >>> 0) / 4294967296;
     };
   }
 
-  function dayOfYear(d) {
-    const start = new Date(d.getFullYear(), 0, 0);
-    return Math.floor((d - start) / 86400000);
+  function dayOfYearUTC(d) {
+    const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const start = new Date(Date.UTC(d.getFullYear(), 0, 1));
+    return Math.floor((dt - start) / 86400000); // 0..365
   }
 
-  function generate(date) {
-    const seed = date.getFullYear() * 1000 + dayOfYear(date);
-    const rand = rng(seed);
+  function pickUnique(rand, n, max) {
+    const s = new Set();
+    while (s.size < n) s.add(Math.floor(rand() * max));
+    return [...s];
+  }
 
-    const cats = [];
-    while (cats.length < 4) {
-      const c = BANK[Math.floor(rand() * BANK.length)];
-      if (!cats.includes(c)) cats.push(c);
+  function pick4(rand, arr, used) {
+    const out = [];
+    let guard = 0;
+    while (out.length < 4 && guard++ < 200) {
+      const w = arr[Math.floor(rand() * arr.length)];
+      if (!out.includes(w) && !used.has(w)) out.push(w);
     }
+    // dernier recours
+    if (out.length < 4) {
+      for (const w of arr) if (!out.includes(w)) out.push(w);
+      out.length = 4;
+    }
+    out.forEach(w => used.add(w));
+    return out;
+  }
+
+  function generate(date, puzzleNumber) {
+    const doy = dayOfYearUTC(date) % 365;
+    const n = Math.max(1, (puzzleNumber|0) || 1);
+
+    // seed: stable par jour, et variant selon puzzle # (pour en faire plusieurs)
+    const seed = (date.getFullYear() * 100000 + doy * 100 + (n % 100)) | 0;
+    const rand = rng32(seed);
+
+    const catIdx = pickUnique(rand, 4, BANK.length);
+    const cats = catIdx.map(i => BANK[i]);
 
     const used = new Set();
-    const groups = cats.map(c => {
-      const w = [];
-      while (w.length < 4) {
-        const word = c.words[Math.floor(rand() * c.words.length)];
-        if (!w.includes(word) && !used.has(word)) {
-          w.push(word);
-          used.add(word);
-        }
-      }
-      return { label: c.label, words: w };
-    });
+    const groups = cats.map(c => ({
+      label: c.label,
+      words: pick4(rand, c.words, used)
+    }));
 
     return {
-      id: date.toISOString().slice(0,10),
+      id: `${date.toISOString().slice(0,10)}#${n}`,
       groups
     };
   }
 
-  window.getPuzzleForToday = function () {
-    return generate(new Date());
+  window.getPuzzleFor = function (date, puzzleNumber) {
+    return generate(date, puzzleNumber);
   };
 
+  window.getPuzzleForToday = function () {
+    return generate(new Date(), 1);
+  };
 })();
