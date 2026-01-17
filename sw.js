@@ -1,4 +1,4 @@
-const CACHE = "connections-fr-v1";
+const CACHE = "connections-fr-v2";
 const ASSETS = [
   "./",
   "./index.html",
